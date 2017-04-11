@@ -40,9 +40,9 @@ class Hero {
         this.isLeft = false;
         this.isImmortal = false;
         this.isInvisible = false;
-        this.kunaiCount = 10;
+        this.kunaiCount = 10 - game.difficulty * 2;
         this.health = 3;
-        this.maxHealth = 5;
+        this.maxHealth = 5 - game.difficulty;
         this.states = {    
             deadState: {
                 width: 145,
@@ -227,16 +227,17 @@ class Zombie {
 class ZombieBoss {
     constructor() {
         this.img = zombieFemale,
-        this.positionX = 0,
-        this.startXPosition = 0,
-        this.maxXPosition = 0,
-        this.positionY = 205,
-        this.isFastRun = false,
-        this.isHurted = false,
-        this.isAtack = false,
-        this.isDead = false,
-        this.health = 5,
-        this.currentHealth = 0,
+        this.startPositionX = -220;
+        this.positionX = 0;
+        this.startXPosition = 0;
+        this.maxXPosition = 0;
+        this.positionY = 205;
+        this.isFastRun = false;
+        this.isHurted = false;
+        this.isAtack = false;
+        this.isDead = false;
+        this.health = 15 + game.difficulty * 5;
+        this.currentHealth = 0;
         this.states = {            
             atackState: {
                 width: 261,
@@ -325,18 +326,10 @@ const checkStatusTime = 75;
 const zombieFeelHeroDistance = 300;
 const immortalTime = 120;
 
-let pauseMenuNextImageDist = 184;
-let isAgainButtonHover = false;
-let isContinueButtonHover = false;
-let buttonWidht = 145;
-let buttoHeight = 73; 
-let butttonAgainPositionX = 508;
-let butttonAgainPositionY = 250;
-let butttonReplayPositionX = 670;
-let butttonReplayPositionY = 250;
 let currentImmortalTime = immortalTime;
 
-
+let bgPosition = 0;
+let roadPosition  = 0;
 let hero;
 let zombieBoss;
 let zombieArr;
@@ -349,10 +342,7 @@ let zombieTimer;
 let zombieBossTimer;
 let addZombieTimer;
 let oneActionTimer;
-let game;
 let bgDx;
-let bgPosition;
-let roadPosition;
 let isOneAction;
 let canAddBonus;
 
@@ -380,6 +370,16 @@ let buttons = {
     }
 };
 
+let game = {
+    isStarted: false,
+    isShowMainMenu: true,
+    menuId: undefined,
+    startDelay: undefined,
+    isStartDelayEnded: false,
+    delayTime: 3,
+    difficulty: 1,
+}
+
 function newGameReset() {
     hero = new Hero;
     zombieBoss = new ZombieBoss();
@@ -393,14 +393,18 @@ function newGameReset() {
     bgDx = 1;
     slideTimer = false;
     canAddBonus = false;
-    game = {
-        gameId: undefined,
-        isPaused: false,
-        isStarted: false,
-        isEnded: false,
-        isWin: false,
-        score: 0,
-    };
+    game.gameId = undefined;
+    game.isPaused = false;
+    game.isStarted = false;
+    game.isShowDifficultyMenu = false;
+    game.isShowMainMenu = false;
+    game.isEnded = false;
+    game.isWin = false;
+    game.score = 0;
+    game.startDelay = undefined;
+    game.isStartDelayEnded = false;
+    game.delayTime = 3;
+
     for (let button in buttons) {
         button.isPressed = false;
     }
@@ -432,7 +436,8 @@ function addNewZombie(x, y) {
 
 function isZombieAtack(zombie) {
     return hero.positionX >= zombie.positionX - 20
-      && hero.positionX <= zombie.positionX + zombie.currentState.width - 20;
+      && hero.positionX <= zombie.positionX + zombie.currentState.width - 20
+      && zombieBoss.currentState !== zombieBoss.states.deadState;
 };
 
 function isCanKillHero(zombie) {
@@ -567,6 +572,7 @@ function makeHeroDead() {
     clearInterval(mainTimer);
     let heroDeadTimer = setInterval(function() {
         removeHeroKeydownListeners();
+        removeHeroKeyupListeners();
         if (hero.currentState.currentSpriteImg >= hero.currentState.spriteCount - 1) {
             clearInterval(heroDeadTimer);
             stopGame();
@@ -589,6 +595,8 @@ function setOneHeroAction(state, time){
                 clearInterval(oneActionTimer)
                 hero.isPerformSingleAction = false;
                 startMainTimer();
+                setHeroKeydownListeners();
+                setHeroKeyupListeners();
 
                 if (buttons.jump.isPressed) {
                     setOneHeroAction(hero.states.jumpState, heroSpeed);
@@ -627,9 +635,9 @@ function isKunaiInBossZombie(kunaiItem) {
 };
 
 function createRandomBonus() {
-    let n = getRandomInt(1, 4);
+    let n = getRandomInt(1, 6);
     let newBonus = {};
-    if (n === 3) {
+    if (n === 5) {
         newBonus.item = 'heart',
         newBonus.standardWidth = 38;
         newBonus.standardHeight = 38;
@@ -677,7 +685,7 @@ function checkBonusesStatus() {
     randomBonuses.forEach((bonus) => {
         if (isHeroCatchBonus(bonus) || bonus.positionX + bonus.width < 0) {
             if (bonus.item === 'kunai') {
-                hero.kunaiCount += 7;
+                hero.kunaiCount += 10 - game.difficulty * 2;
                 randomBonuses.splice(randomBonuses.indexOf(bonus), 1)
             } else if (bonus.item === 'heart' && hero.health < hero.maxHealth) {
                 hero.health += 1
@@ -754,8 +762,6 @@ function checkAllStatuses() {
 };
 
 function startMainTimer() {
-    setHeroKeydownListeners();
-    setHeroKeyupListeners();
     mainTimer = setInterval(function() {
         if (hero.currentState.currentSpriteImg >= hero.currentState.spriteCount - 1) {
             hero.currentState.currentSpriteImg = 0;
@@ -768,7 +774,7 @@ function startMainTimer() {
 function startAddZombieTimer(time) {
     addZombieTimer = setTimeout(function addZombie() {
        addNewZombie(canvas.width + 40, 333)
-       addZombieTimer = setTimeout(addZombie, getRandomInt(500, 2000));
+       addZombieTimer = setTimeout(addZombie, getRandomInt(1000 - game.difficulty * 400, 2500 - game.difficulty * 700));
     }, time);
 };
 
@@ -800,6 +806,8 @@ function startBossZombieTimer(time) {
                 zombieBoss.isDead = true;
                 game.isWin = true;
                 game.score += 1500;
+                removeHeroKeydownListeners();
+                removeHeroKeyupListeners();
                 stopGame();
             } else {  
                 if(zombieBoss.isAtack) {
@@ -852,7 +860,7 @@ function pauseLieZomnieTimer() {
 
 function showPauseMenu() {
     pauseGame();
-    addPauseMenuListeners();
+    addMenuListeners(makePauseMenuHovered, pauseMenuClickCallback);
     pauseLieZomnieTimer();
 
     if (hero.isImmortal) {
@@ -869,7 +877,7 @@ function closePauseMenu() {
     if(!isOneAction && !buttons.runLeft.isPressed && !buttons.run.isPressed){
         setCurrentHeroState(hero.states.stayState);
     }
-    removePauseMenuListeners();
+    removeMenuListeners(makePauseMenuHovered, pauseMenuClickCallback);
     resumeLieZomnieTimer();
     resumeGame();
     game.isPaused = false;
@@ -883,7 +891,8 @@ function closePauseMenu() {
 };
 
 function gamePauseKeydownCallback(e) {
-    if (isButtonsPressed(buttons.pause, e.keyCode) && !hero.isDead && !zombieBoss.isDead) {
+    if (game.isStarted && game.isStartDelayEnded && isButtonsPressed(buttons.pause, e.keyCode) && !hero.isDead 
+      && !zombieBoss.isDead) {
         let stateCopy;
         if (!game.isPaused) {
             showPauseMenu();
@@ -902,12 +911,6 @@ function drawRoad(img, bgPosition) {
     ctx.drawImage(img, 0 -roadPosition, 450, canvas.width, 200);
     ctx.drawImage(img, 0, 0, img.width, img.height, canvas.width -roadPosition, 450, canvas.width, 200);
 };
-
-function drawText() {
-    ctx.font = "32px serif";
-    ctx.fillStyle = '#eeeeee';
-    ctx.fillText(`Score: ${game.score}`, 1050, 63);
-}
 
 function drawHero() {
     if (hero.isInvisible) {
@@ -947,7 +950,7 @@ function drawHeroStatus() {
     ctx.font = 'bold 18px serif';
     ctx.fillStyle = '#111';
     ctx.fillText(`x ${hero.kunaiCount}`, 185, 96); // kunai count
-    for (let i = 0; i <= 4; i++) {
+    for (let i = 0; i <= hero.maxHealth - 1; i++) {
         if (i < hero.health) {
             ctx.drawImage(otherImg, 3, 45, 38, 38, 130 + (i * 35), 40, 25, 25); // health
         }
@@ -976,19 +979,27 @@ function drawZombies(zombies) {
 };
 
 function drawZomieBoss() {
-    if (zombieBoss.isHurted) {
-        ctx.globalAlpha = 0.5; 
-    };
+    if (!game.isStartDelayEnded) {
+        ctx.drawImage(zombieBoss.img, zombieBoss.currentState.startX + (zombieBoss.currentState.width *
+          zombieBoss.currentState.currentSpriteImg), zombieBoss.currentState.startY, 
+          zombieBoss.currentState.width, zombieBoss.currentState.height, zombieBoss.startPositionX + 
+          zombieBoss.currentState.dx, zombieBoss.positionY + zombieBoss.currentState.dy,
+          zombieBoss.currentState.width, zombieBoss.currentState.height);
+    } else {
+        if (zombieBoss.isHurted) {
+            ctx.globalAlpha = 0.5; 
+        };
 
-    ctx.drawImage(zombieBoss.img, zombieBoss.currentState.startX + (zombieBoss.currentState.width *
-      zombieBoss.currentState.currentSpriteImg), zombieBoss.currentState.startY, 
-      zombieBoss.currentState.width, zombieBoss.currentState.height, zombieBoss.positionX + 
-      zombieBoss.currentState.dx, zombieBoss.positionY + zombieBoss.currentState.dy,
-      zombieBoss.currentState.width, zombieBoss.currentState.height);
+        ctx.drawImage(zombieBoss.img, zombieBoss.currentState.startX + (zombieBoss.currentState.width *
+          zombieBoss.currentState.currentSpriteImg), zombieBoss.currentState.startY, 
+          zombieBoss.currentState.width, zombieBoss.currentState.height, zombieBoss.positionX + 
+          zombieBoss.currentState.dx, zombieBoss.positionY + zombieBoss.currentState.dy,
+          zombieBoss.currentState.width, zombieBoss.currentState.height);
 
-    if (ctx.globalAlpha !== 1) {
-        ctx.globalAlpha = 1; 
-    };
+        if (ctx.globalAlpha !== 1) {
+            ctx.globalAlpha = 1; 
+        };
+    }
 };
 
 function drawBossHealth() {
@@ -1030,6 +1041,21 @@ function drawRandomBonuses() {
     });
 };
 
+function drawText() {
+    ctx.font = "32px serif";
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillText(`Score: ${game.score}`, 1050, 63);
+}
+
+function drawWinConditions() {
+    ctx.font = "36px serif";
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillText('Survive and kill the Boss!', 450, 150);
+    ctx.fillText(`${game.delayTime}`, 620, 200);
+}
+
+/// draw menu
+
 function drawMenubg() {
     ctx.fillStyle = '#000';
     ctx.globalAlpha = 0.4; 
@@ -1037,128 +1063,321 @@ function drawMenubg() {
     ctx.globalAlpha = 1;
 }
 
-function drawPauseMenu() {
-    ctx.drawImage(pauseMenu, 2, 95, 573, 304, 440, 150, 458, 243);
-    ctx.font = 'bold 32px serif';
-    ctx.fillStyle = '#eeeeee';
-    ctx.fillText('Pause!', 620, 235); // kunai count
-    if (isAgainButtonHover) {
-        ctx.drawImage(pauseMenu, 368 + pauseMenuNextImageDist, 0, 185, 93, 
-          butttonAgainPositionX, butttonAgainPositionY, buttonWidht, buttoHeight); 
-    } else {
-        ctx.drawImage(pauseMenu, 368, 0, 185, 93, butttonAgainPositionX, 
-          butttonAgainPositionY, buttonWidht, buttoHeight); 
-    }
-
-    if (isContinueButtonHover) {
-        ctx.drawImage(pauseMenu, 0 + pauseMenuNextImageDist, 0, 185, 93,
-          butttonReplayPositionX, butttonReplayPositionY, buttonWidht, buttoHeight);
-    } else {
-        ctx.drawImage(pauseMenu, 0, 0, 185, 93, butttonReplayPositionX,
-          butttonReplayPositionY, buttonWidht, buttoHeight);
+let pauseMenuButtons =  {
+    replay: {
+        hovered: false,
+        positionX: 483,
+        positionY: 250,
+        positionXOnSprite: 368,
+        positionYOnSprite: 0,
+    },
+    replayEnd: {
+        hovered: false,
+        positionX: 645,
+        positionY: 250,
+        positionXOnSprite: 368,
+        positionYOnSprite: 0,
+    },
+    continue: {
+        hovered: false,
+        positionX: 645,
+        positionY: 250,
+        positionXOnSprite: 0,
+        positionYOnSprite: 0,
+    },
+    exit: {
+        hovered: false,
+        positionX: 483,
+        positionY: 250,
+        positionXOnSprite: 735,
+        positionYOnSprite: 0,
+    },
+    settings: {   
+        nextImageDist: 184,
+        widthOnSprite: 185,
+        heightOnSprite: 93,
+        width: 145,
+        height: 73,
     }
 };
 
-function drawEndMenu() {
-    ctx.drawImage(pauseMenu, 2, 95, 573, 304, 440, 150, 458, 243);
-    if (isAgainButtonHover) {
-        ctx.drawImage(pauseMenu, 368 + pauseMenuNextImageDist, 0, 185, 93,
-          butttonReplayPositionX, butttonReplayPositionY, buttonWidht, buttoHeight); 
-    } else {
-        ctx.drawImage(pauseMenu, 368, 0, 185, 93, butttonReplayPositionX,
-        butttonReplayPositionY, buttonWidht, buttoHeight); 
+let mainMenuButtons = {
+    play: {
+        hovered: false,
+        positionX: 512,
+        positionY: 210,
+        positionXOnSprite: 575,
+        positionYOnSprite: 244,
+    },
+    difficulty: {
+        hovered: false,
+        positionX: 512,
+        positionY: 300,
+        positionXOnSprite: 575,
+        positionYOnSprite: 170,
+    },
+    control: {
+        hovered: false,
+        positionX: 512,
+        positionY: 390,
+        positionXOnSprite: 575,
+        positionYOnSprite: 96,
+    },
+    babyMode: {
+        hovered: false,
+        isActive: false,
+        positionX: 512,
+        positionY: 150,
+        positionXOnSprite: 2,
+        positionYOnSprite: 400,
+    },
+    normal: {
+        hovered: false,
+        isActive: true,
+        positionX: 512,
+        positionY: 240,
+        positionXOnSprite: 2,
+        positionYOnSprite: 548,
+    },
+    hellMode: {
+        hovered: false,
+        isActive: false,
+        positionX: 512,
+        positionY: 330,
+        positionXOnSprite: 2,
+        positionYOnSprite: 474,
+    },
+    mainMenu: {
+        hovered: false,
+        positionX: 512,
+        positionY: 420,
+        positionXOnSprite: 575,
+        positionYOnSprite: 318,
+    },
+    settings: {   
+        nextImageDist: 254,
+        widthOnSprite: 250,
+        heightOnSprite: 70,
+        width: 250,
+        height: 70,
     }
+};
+
+
+function drawButton(button, buttonsSettings) {
+    if (button.isActive) {
+        ctx.drawImage(pauseMenu, button.positionXOnSprite + buttonsSettings.nextImageDist * 2,
+          button.positionYOnSprite, buttonsSettings.widthOnSprite, buttonsSettings.heightOnSprite,
+          button.positionX, button.positionY,buttonsSettings.width, buttonsSettings.height); 
+    } else if (button.hovered) {
+        ctx.drawImage(pauseMenu, button.positionXOnSprite + buttonsSettings.nextImageDist,
+          button.positionYOnSprite, buttonsSettings.widthOnSprite, buttonsSettings.heightOnSprite,
+          button.positionX, button.positionY,buttonsSettings.width, buttonsSettings.height); 
+    } else {
+        ctx.drawImage(pauseMenu, button.positionXOnSprite, button.positionYOnSprite,
+          buttonsSettings.widthOnSprite, buttonsSettings.heightOnSprite, button.positionX,
+          button.positionY,buttonsSettings.width, buttonsSettings.height); 
+    } 
+};
+
+function drawPauseMenu() {
+    ctx.drawImage(pauseMenu, 2, 95, 573, 304, 415, 150, 458, 243);
+    ctx.font = 'bold 32px serif';
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillText('Pause!', 595, 235);
+    drawButton(pauseMenuButtons.replay, pauseMenuButtons.settings)
+    drawButton(pauseMenuButtons.continue, pauseMenuButtons.settings);
+};
+
+
+function drawEndMenu() {
+    ctx.drawImage(pauseMenu, 2, 95, 573, 304, 415, 150, 458, 243);
     ctx.font = 'bold 32px serif';
     ctx.fillStyle = '#eeeeee';
     if (game.isWin) {
-        ctx.fillText('You Win!', 598, 235); // kunai count
+        ctx.fillText('You Win!', 573, 235);
     } else {
-        ctx.fillText('You Lose! Try Again!', 515, 235); // kunai count
+        ctx.fillText('You Lose! Try Again!', 490, 235); 
     }
-    ctx.font = 'bold 26px serif';
-    ctx.fillText('Score:', 515, 275); // kunai count
-    ctx.fillText(game.score, 515, 310); // kunai count
+    drawButton(pauseMenuButtons.exit, pauseMenuButtons.settings)
+    drawButton(pauseMenuButtons.replayEnd, pauseMenuButtons.settings)
+    //ctx.font = 'bold 26px serif';
+    //ctx.fillText('Score:', 515, 275); // kunai count
+    //ctx.fillText(game.score, 515, 310); // kunai count
 };
 
-function isButtonHovered(e, positionX, positionY) { 
-    return e.pageX >= positionX + canvasLeftposition 
-      && e.pageX  <=  positionX + buttonWidht + canvasLeftposition 
-      && e.pageY >= positionY + canvasTopPosition 
-      && e.pageY  <=  positionY + buttoHeight + canvasTopPosition;
+function drawMainMenu() {
+    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 120, 430, 440);
+    drawButton(mainMenuButtons.play, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.difficulty, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.control, mainMenuButtons.settings)
 };
 
+ function drawDifficultyMenu() {
+    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 60, 430, 530);
+    drawButton(mainMenuButtons.babyMode , mainMenuButtons.settings)
+    drawButton(mainMenuButtons.normal, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.hellMode, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.mainMenu, mainMenuButtons.settings)
+};
 
-function resetHoverHoverMenuButtons() {
-    isAgainButtonHover = false;
-    isContinueButtonHover = false;
+function isButtonHovered(e, button, buttonsSettings) { 
+    return e.pageX >= button.positionX + canvasLeftposition 
+      && e.pageX  <=  button.positionX + buttonsSettings.width + canvasLeftposition 
+      && e.pageY >= button.positionY + canvasTopPosition 
+      && e.pageY  <= button.positionY + buttonsSettings.height + canvasTopPosition;
+};
+
+function makeButtonHovered(button) {
+    if (!button.hovered) {
+        button.hovered = true;
+        canvas.style.cursor = 'pointer';   
+    }
+};
+
+function resetHoverHoverMenuButtons(buttons) {
+    for (let button in buttons) {
+        if(buttons[button].hovered === true) {
+            buttons[button].hovered = false;
+        }
+    }
     canvas.style.cursor = 'default';
 };
-    
-function makePauseMenuHovered(e) {
-    if (isButtonHovered(e, butttonAgainPositionX, butttonAgainPositionY)) {
-        if(!isAgainButtonHover) {
-            isAgainButtonHover = true;
-            canvas.style.cursor = 'pointer';   
+
+function setActiveDifficulty(activeButton) {
+    for (let button in mainMenuButtons) {
+        mainMenuButtons[button].isActive = false
+        if (mainMenuButtons[button] === activeButton) {
+            mainMenuButtons[button].isActive = true;
         }
     }
-    else if (isButtonHovered(e, butttonReplayPositionX, butttonReplayPositionY)) {
-        if (!isContinueButtonHover) {
-            isContinueButtonHover = true;
-            canvas.style.cursor = 'pointer';
-        }
-    } else if(isAgainButtonHover || isContinueButtonHover) {
-        resetHoverHoverMenuButtons();
+}
 
+function makeMainMenuHovered(e) {
+    if (isButtonHovered(e, mainMenuButtons.play, mainMenuButtons.settings)) {
+        makeButtonHovered(mainMenuButtons.play)
+    } else if (isButtonHovered(e, mainMenuButtons.difficulty, mainMenuButtons.settings)) {
+        makeButtonHovered( mainMenuButtons.difficulty)
+    } else if (isButtonHovered(e, mainMenuButtons.control, mainMenuButtons.settings)) {
+        makeButtonHovered( mainMenuButtons.control)
+    } else if (mainMenuButtons.play.hovered 
+      || mainMenuButtons.difficulty.hovered
+      || mainMenuButtons.control.hovered) {
+        resetHoverHoverMenuButtons(mainMenuButtons);
+    };
+}
+    
+function mainMenuClickCallback(e) {
+    if (isButtonHovered(e,mainMenuButtons.play, mainMenuButtons.settings)) {
+        resetHoverHoverMenuButtons(pauseMenuButtons);
+        removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+        cancelAnimationFrame(game.menuId);
+        startGame();
+    } else if (isButtonHovered(e, mainMenuButtons.difficulty, mainMenuButtons.settings)){
+        resetHoverHoverMenuButtons(pauseMenuButtons);
+        removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+        game.isShowMainMenu = false;
+        game.isShowDifficultyMenu = true;
+        addMenuListeners(makeDifficultyMenuHovered, difficultyMenuClickCallback);
+    } else if (isButtonHovered(e, mainMenuButtons.control, mainMenuButtons.settings)) {
+        console.log('control')
+    }
+};
+
+
+function makeDifficultyMenuHovered(e) {
+    if (isButtonHovered(e, mainMenuButtons.babyMode, mainMenuButtons.settings)) {
+        makeButtonHovered(mainMenuButtons.babyMode)
+    } else if (isButtonHovered(e, mainMenuButtons.normal, mainMenuButtons.settings)) {
+        makeButtonHovered(mainMenuButtons.normal)
+    } else if (isButtonHovered(e, mainMenuButtons.hellMode, mainMenuButtons.settings)) {
+        makeButtonHovered(mainMenuButtons.hellMode)
+    } else if (isButtonHovered(e, mainMenuButtons.mainMenu, mainMenuButtons.settings)) {
+        makeButtonHovered(mainMenuButtons.mainMenu)
+    } else if (mainMenuButtons.babyMode.hovered || mainMenuButtons.normal.hovered
+      || mainMenuButtons.hellMode.hovered || mainMenuButtons.mainMenu.hovered) {
+        resetHoverHoverMenuButtons(mainMenuButtons);
+    };
+}
+
+function difficultyMenuClickCallback(e) {
+    if (isButtonHovered(e, mainMenuButtons.babyMode, mainMenuButtons.settings)) {
+        setActiveDifficulty(mainMenuButtons.babyMode)
+        game.difficulty = 0;
+    } else if (isButtonHovered(e, mainMenuButtons.normal, mainMenuButtons.settings)){
+        setActiveDifficulty(mainMenuButtons.normal)
+        game.difficulty = 1;
+    } else if (isButtonHovered(e, mainMenuButtons.hellMode, mainMenuButtons.settings)) {
+        setActiveDifficulty(mainMenuButtons.hellMode)
+        game.difficulty = 2;
+    } else if (isButtonHovered(e, mainMenuButtons.mainMenu, mainMenuButtons.settings)) {
+        resetHoverHoverMenuButtons(mainMenuButtons);
+        removeMenuListeners(makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        game.isShowDifficultyMenu = false;
+        game.isShowMainMenu = true;
+        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+    }
+};
+
+function makePauseMenuHovered(e) {
+    if (isButtonHovered(e, pauseMenuButtons.replay, pauseMenuButtons.settings)) {
+        makeButtonHovered(pauseMenuButtons.replay)
+    } else if (isButtonHovered(e, pauseMenuButtons.continue, pauseMenuButtons.settings)) {
+        makeButtonHovered(pauseMenuButtons.continue)
+    } else if (pauseMenuButtons.replay.hovered || pauseMenuButtons.continue.hovered) {
+        resetHoverHoverMenuButtons(pauseMenuButtons);
     };
 };
 
-function pauseMenuClickCallvack(e) {
-    if (isButtonHovered(e,butttonAgainPositionX, butttonAgainPositionY)) {
-        resetHoverHoverMenuButtons()
-        removePauseMenuListeners()
+function pauseMenuClickCallback(e) {
+    if (isButtonHovered(e, pauseMenuButtons.replay, pauseMenuButtons.settings)) {
+        resetHoverHoverMenuButtons(pauseMenuButtons);
+        removeMenuListeners(makePauseMenuHovered, pauseMenuClickCallback);
         resetGame();
-    } else if (isButtonHovered(e, butttonReplayPositionX, butttonReplayPositionY)){
-        resetHoverHoverMenuButtons();
+    } else if (isButtonHovered(e, pauseMenuButtons.continue, pauseMenuButtons.settings)){
+        resetHoverHoverMenuButtons(pauseMenuButtons);
         closePauseMenu();
-    }
+    };
 };
 
 function makeReplayEndButtonHovered(e) {
-    if (isButtonHovered(e, butttonReplayPositionX, butttonReplayPositionY)) {
-        if(!isAgainButtonHover) {
-            isAgainButtonHover = true;
-            canvas.style.cursor = 'pointer';   
-        }
-    } else if(isAgainButtonHover ) {
-        canvas.style.cursor = 'default';
-        isAgainButtonHover = false;
+    if (isButtonHovered(e, pauseMenuButtons.replayEnd, pauseMenuButtons.settings)) {
+        makeButtonHovered(pauseMenuButtons.replayEnd)   
+    } else if (isButtonHovered(e, pauseMenuButtons.exit, pauseMenuButtons.settings)) {
+        makeButtonHovered(pauseMenuButtons.exit) 
+    } else if(pauseMenuButtons.replayEnd || pauseMenuButtons.exit ) {
+        resetHoverHoverMenuButtons(pauseMenuButtons);
     };
 };
 
-function replayEndClickCallvack(e) {
-    if (isButtonHovered(e,butttonReplayPositionX, butttonReplayPositionY)) {
-        removeEndMenuListeners();
-        canvas.style.cursor = 'default';
+
+function replayEndClickCallback(e) {
+    if (isButtonHovered(e, pauseMenuButtons.replayEnd, pauseMenuButtons.settings)) {
+        removeMenuListeners(makeReplayEndButtonHovered, replayEndClickCallback)
+        resetHoverHoverMenuButtons(pauseMenuButtons);
         resetGame();
+    } else if (isButtonHovered(e, pauseMenuButtons.exit, pauseMenuButtons.settings)){
+        resetHoverHoverMenuButtons(pauseMenuButtons);
+        removeMenuListeners(makeReplayEndButtonHovered, replayEndClickCallback);
+        cancelAnimationFrame(game.gameId);
+        removeHeroKeydownListeners();
+        removeHeroKeyupListeners();
+        game.isShowMainMenu = true;
+        game.isStarted = false;
+        mainMenuEngine();
+        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
     }
 };
 
-function addPauseMenuListeners() {
-    canvas.addEventListener('mousemove', makePauseMenuHovered);
-    canvas.addEventListener('click', pauseMenuClickCallvack);
-}
-function removePauseMenuListeners() {
-    canvas.removeEventListener('mousemove', makePauseMenuHovered);
-    canvas.removeEventListener('click', pauseMenuClickCallvack);
-}
+/// menu listeners
 
-function addEndMenuListeners() {
-    canvas.addEventListener('mousemove', makeReplayEndButtonHovered);
-    canvas.addEventListener('click', replayEndClickCallvack);
+function addMenuListeners(mouseMoveCallback, clickCallback) {
+    canvas.addEventListener('mousemove', mouseMoveCallback);
+    canvas.addEventListener('click', clickCallback);
 }
-function removeEndMenuListeners() {
-    canvas.removeEventListener('mousemove', makeReplayEndButtonHovered);
-    canvas.removeEventListener('click', replayEndClickCallvack);
+function removeMenuListeners(mouseMoveCallback, clickCallback) {
+    canvas.removeEventListener('mousemove', mouseMoveCallback);
+    canvas.removeEventListener('click', clickCallback);
 }
 
 function changeBgPosition() {
@@ -1233,6 +1452,9 @@ function changeZombiesPosition() {
 };
     
 function changeZombieBossPosition() {
+    if(!game.isStartDelayEnded) {
+        zombieBoss.startPositionX += 1; 
+    }
     if (zombieBoss.isAtack) {
         zombieBoss.positionX -= bgDx * 2;
     } else if (zombieBoss.isFastRun && zombieBoss.positionX >= zombieBoss.maxXPosition) {
@@ -1257,6 +1479,9 @@ function gameEngine() {
     ctx.clearRect(0, 0, 1280, 640);
     drawBg(background, bgPosition);
     drawRoad(road, bgPosition*2);
+    if(!game.isStartDelayEnded) {
+        drawWinConditions();
+    }
     drawKunai();
     drawZomieBoss();
     drawRandomBonuses();
@@ -1266,14 +1491,17 @@ function gameEngine() {
     drawText();
     drawHeroStatus();
     drawBossHealth();
-    if (!game.isPaused) {
-       changeZombiesPosition();
-       changeHeroPosition();
-       changeBgPosition();
-       changeKunaiPosition();
-       changeZombieBossPosition();
+
+    if (!game.isPaused && game.isStarted ) {
+        if (game.isStartDelayEnded) {
+            changeZombiesPosition();
+            changeHeroPosition();
+            changeBgPosition();
+            changeKunaiPosition();
+        }
+        changeZombieBossPosition();
     }
-    
+
     if (game.isPaused) {
         drawMenubg();
         if (game.isEnded) {
@@ -1285,15 +1513,44 @@ function gameEngine() {
     game.gameId = requestAnimationFrame(gameEngine);
 };
 
+function mainMenuEngine() {
+    ctx.clearRect(0, 0, 1280, 640);
+    drawBg(background, bgPosition);
+    drawRoad(road, bgPosition*2);
+    drawMenubg();
+    if (game.isShowMainMenu) {
+        drawMainMenu();
+    }
+    if (game.isShowDifficultyMenu){
+        drawDifficultyMenu();
+    }
+    game.menuId = requestAnimationFrame(mainMenuEngine);
+};
+
 function startGame() {
+    console.log(game.difficulty)
     newGameReset();
     setCurrentHeroState(hero.states.stayState);
     zombieBoss.currentState = zombieBoss.states.runState;
     zombieBoss.currentHealth = zombieBoss.health;
-    game.isStarted = true;
-    startAllTimer();
-    startAddZombieTimer(2000);
     gameEngine();
+    startMainTimer();
+    startBossZombieTimer(bossZombieSpeed);
+    game.startDelay = setInterval(() => {
+    game.isStarted = true;
+        if(game.delayTime > 0 ){
+            game.delayTime -= 1;
+        } else {
+            startZombieTimer();
+            checkAllStatuses();
+            startAddZombieTimer(2000);
+            game.isStartDelayEnded = true;
+            setHeroKeydownListeners();
+            setHeroKeyupListeners();
+            zombieBoss.positionX = zombieBoss.startPositionX;
+            clearInterval(game.startDelay);
+        }
+    }, 1000);
 };
 
 function resumeGame() {
@@ -1301,7 +1558,7 @@ function resumeGame() {
         startAllTimer();
         setHeroKeydownListeners();
         startAddZombieTimer(500);
-    }
+    };
 };
 
 function pauseGame() {
@@ -1314,9 +1571,7 @@ function pauseGame() {
 function stopGame() {
     pauseLieZomnieTimer();
     stopAllTimer();
-    removeHeroKeydownListeners();
-    removeHeroKeyupListeners();
-    addEndMenuListeners()
+    addMenuListeners(makeReplayEndButtonHovered, replayEndClickCallback);
     game.isPaused = true;
     game.isEnded = true;
 };
@@ -1326,7 +1581,7 @@ function resetGame() {
     removeHeroKeyupListeners()
     stopAllTimer();
     cancelAnimationFrame(game.gameId);
-    startGame()
+    startGame();
 };
 
 /// run listener callback
@@ -1447,12 +1702,12 @@ function throwKeyupCallback(e) {
 };
 
 function leaveMouseCallback(e) {
-    if(!game.isPaused) {
+    if(!game.isPaused && game.isStarted && game.isStartDelayEnded) {
         showPauseMenu();
     }
 };
 window.addEventListener('keydown', gamePauseKeydownCallback);
-document.body.addEventListener('mouseleave', leaveMouseCallback);
+//document.body.addEventListener('mouseleave', leaveMouseCallback);
 
 function setHeroKeydownListeners() {
     window.addEventListener('keydown', runKeydownCallback);
@@ -1483,6 +1738,7 @@ function removeHeroKeydownListeners() {
 };
 
 function removeHeroKeyupListeners() {
+    window.removeEventListener('keyup', runKeyupCallback);
     window.removeEventListener('keyup', jumpKeyupCallback);
     window.removeEventListener('keyup', slideKeyupCallback);
     window.removeEventListener('keyup', swordAtackKeyupCallback);
@@ -1509,8 +1765,9 @@ function startAllTimer() {
 
 let startTimer = setInterval(function() {
     if(heroLoad && zombieMaleLoad && zombieFemaleLoad && otherLoad && backgrounLoad && roadLoad) {
-       clearInterval(startTimer)
-       startGame();
-    }
+        clearInterval(startTimer)
+        mainMenuEngine();
+        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+    };
 }, 50);
 
