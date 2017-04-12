@@ -295,6 +295,7 @@ const background = createNewImg('./img/background.jpg', 1280, 630);
 const road = createNewImg('./img/road.png', 1280, 240);
 const otherImg = createNewImg('./img/other.png');
 const pauseMenu = createNewImg('./img/menu1.png');
+const control = createNewImg('./img/control.png');
 
 let heroLoad = false;
 let zombieMaleLoad = false;
@@ -316,7 +317,6 @@ const pointsForZombie = 100;
 const randomBonusesTime = 10; 
 const kunaiDx = 7;
 const heroDx = 5;
-const mZombieDx = 1;
 const heroSpeed = 50;
 const heroDeadSpeed = 150;
 const mZombieSpeed = 75;
@@ -397,6 +397,7 @@ function newGameReset() {
     game.isPaused = false;
     game.isStarted = false;
     game.isShowDifficultyMenu = false;
+    game.isShowControl = false;
     game.isShowMainMenu = false;
     game.isEnded = false;
     game.isWin = false;
@@ -1163,6 +1164,24 @@ let mainMenuButtons = {
     }
 };
 
+let controlMenuButtons = {
+    mainMenuControl: {
+        hovered: false,
+        positionX:547,
+        positionY: 450,
+        positionXOnSprite: 575,
+        positionYOnSprite: 318,
+    },
+    settings: {   
+        nextImageDist: 254,
+        widthOnSprite: 250,
+        heightOnSprite: 70,
+        width: 175,
+        height: 49,
+    },
+};
+
+
 
 function drawButton(button, buttonsSettings) {
     if (button.isActive) {
@@ -1178,6 +1197,32 @@ function drawButton(button, buttonsSettings) {
           buttonsSettings.widthOnSprite, buttonsSettings.heightOnSprite, button.positionX,
           button.positionY,buttonsSettings.width, buttonsSettings.height); 
     } 
+};
+
+function drawMainMenu() {
+    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 120, 430, 440);
+    drawButton(mainMenuButtons.play, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.difficulty, mainMenuButtons.settings)
+    drawButton(mainMenuButtons.control, mainMenuButtons.settings)
+};
+
+ function drawDifficultyMenu() {
+    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 60, 430, 530);
+    drawButton(mainMenuButtons.babyMode , mainMenuButtons.settings);
+    drawButton(mainMenuButtons.normal, mainMenuButtons.settings);
+    drawButton(mainMenuButtons.hellMode, mainMenuButtons.settings);
+    drawButton(mainMenuButtons.mainMenu, mainMenuButtons.settings);
+};
+
+function drawControlMenu() {
+    ctx.drawImage(pauseMenu, 761, 400, 430, 440, 375, 60, 530, 530);
+    ctx.font = 'bold 32px serif';
+    ctx.fillStyle = '#eeeeee';
+    ctx.fillText('Control:', 585, 160);
+
+    ctx.drawImage(control, 0, 0, 450, 330, 470, 170,  360, 264); 
+    drawButton(controlMenuButtons.mainMenuControl, controlMenuButtons.settings);
+
 };
 
 function drawPauseMenu() {
@@ -1204,21 +1249,6 @@ function drawEndMenu() {
     //ctx.font = 'bold 26px serif';
     //ctx.fillText('Score:', 515, 275); // kunai count
     //ctx.fillText(game.score, 515, 310); // kunai count
-};
-
-function drawMainMenu() {
-    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 120, 430, 440);
-    drawButton(mainMenuButtons.play, mainMenuButtons.settings)
-    drawButton(mainMenuButtons.difficulty, mainMenuButtons.settings)
-    drawButton(mainMenuButtons.control, mainMenuButtons.settings)
-};
-
- function drawDifficultyMenu() {
-    ctx.drawImage(pauseMenu, 760, 400, 430, 440, 420, 60, 430, 530);
-    drawButton(mainMenuButtons.babyMode , mainMenuButtons.settings)
-    drawButton(mainMenuButtons.normal, mainMenuButtons.settings)
-    drawButton(mainMenuButtons.hellMode, mainMenuButtons.settings)
-    drawButton(mainMenuButtons.mainMenu, mainMenuButtons.settings)
 };
 
 function isButtonHovered(e, button, buttonsSettings) { 
@@ -1280,9 +1310,33 @@ function mainMenuClickCallback(e) {
         game.isShowDifficultyMenu = true;
         addMenuListeners(makeDifficultyMenuHovered, difficultyMenuClickCallback);
     } else if (isButtonHovered(e, mainMenuButtons.control, mainMenuButtons.settings)) {
-        console.log('control')
+        resetHoverHoverMenuButtons(pauseMenuButtons);
+        removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+        game.isShowMainMenu = false;
+        game.isShowControl = true;
+        addMenuListeners(makeControlMenuHovered, controlMenuClickCallback);
     }
 };
+
+
+function makeControlMenuHovered(e) {
+    if (isButtonHovered(e, controlMenuButtons.mainMenuControl, controlMenuButtons.settings)) {
+        makeButtonHovered(controlMenuButtons.mainMenuControl)
+    } else if (controlMenuButtons.mainMenuControl.hovered) {
+        resetHoverHoverMenuButtons(controlMenuButtons);
+    };
+}
+
+function controlMenuClickCallback(e) {
+    if (isButtonHovered(e, controlMenuButtons.mainMenuControl, controlMenuButtons.settings)) {
+        resetHoverHoverMenuButtons(controlMenuButtons);
+        removeMenuListeners(makeControlMenuHovered, controlMenuClickCallback);
+        game.isShowControl = false;
+        game.isShowMainMenu = true;
+        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+    } 
+};
+
 
 
 function makeDifficultyMenuHovered(e) {
@@ -1494,10 +1548,10 @@ function gameEngine() {
 
     if (!game.isPaused && game.isStarted ) {
         if (game.isStartDelayEnded) {
-            changeZombiesPosition();
-            changeHeroPosition();
-            changeBgPosition();
-            changeKunaiPosition();
+           changeZombiesPosition();
+           changeHeroPosition();
+           changeBgPosition();
+           changeKunaiPosition();
         }
         changeZombieBossPosition();
     }
@@ -1524,11 +1578,13 @@ function mainMenuEngine() {
     if (game.isShowDifficultyMenu){
         drawDifficultyMenu();
     }
+    if (game.isShowControl) {
+        drawControlMenu()
+    }
     game.menuId = requestAnimationFrame(mainMenuEngine);
 };
 
 function startGame() {
-    console.log(game.difficulty)
     newGameReset();
     setCurrentHeroState(hero.states.stayState);
     zombieBoss.currentState = zombieBoss.states.runState;
