@@ -1507,7 +1507,7 @@ function changeZombiesPosition() {
     
 function changeZombieBossPosition() {
     if(!game.isStartDelayEnded) {
-        zombieBoss.startPositionX += 1; 
+        zombieBoss.startPositionX += 1.1; 
     }
     if (zombieBoss.isAtack) {
         zombieBoss.positionX -= bgDx * 2;
@@ -1604,9 +1604,10 @@ function startGame() {
             setHeroKeydownListeners();
             setHeroKeyupListeners();
             zombieBoss.positionX = zombieBoss.startPositionX;
+            zombieBoss.maxXPosition = zombieBoss.startPositionX;
             clearInterval(game.startDelay);
         }
-    }, 1000);
+    }, 1000); 
 };
 
 function resumeGame() {
