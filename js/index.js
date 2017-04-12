@@ -947,10 +947,10 @@ function drawHeroStatus() {
     ctx.fillStyle = '#fff'
     ctx.stroke();
     ctx.drawImage(otherImg, 72, 2, 93, 93, 33, 31, 80, 80); //hero icon
-    ctx.drawImage(otherImg, 0, 14, 48, 12, 130, 85, 48, 12); //kunai icon
-    ctx.font = 'bold 18px serif';
+    ctx.drawImage(otherImg, 0, 14, 48, 12, 130, 82, 60, 15); //kunai icon
+    ctx.font = 'bold 24px serif';
     ctx.fillStyle = '#111';
-    ctx.fillText(`x ${hero.kunaiCount}`, 185, 96); // kunai count
+    ctx.fillText(`x ${hero.kunaiCount}`, 195, 95); // kunai count
     for (let i = 0; i <= hero.maxHealth - 1; i++) {
         if (i < hero.health) {
             ctx.drawImage(otherImg, 3, 45, 38, 38, 130 + (i * 35), 40, 25, 25); // health
@@ -1167,7 +1167,7 @@ let mainMenuButtons = {
 let controlMenuButtons = {
     mainMenuControl: {
         hovered: false,
-        positionX:547,
+        positionX: 555,
         positionY: 450,
         positionXOnSprite: 575,
         positionYOnSprite: 318,
@@ -1216,7 +1216,7 @@ function drawControlMenu() {
     ctx.drawImage(pauseMenu, 761, 400, 430, 440, 375, 60, 530, 530);
     ctx.font = 'bold 32px serif';
     ctx.fillStyle = '#eeeeee';
-    ctx.fillText('Control:', 585, 160);
+    ctx.fillText('Controls:', 580, 160);
 
     ctx.drawImage(control, 0, 0, 450, 330, 470, 170,  360, 264); 
     drawButton(controlMenuButtons.mainMenuControl, controlMenuButtons.settings);
@@ -1238,15 +1238,14 @@ function drawEndMenu() {
     ctx.font = 'bold 32px serif';
     ctx.fillStyle = '#eeeeee';
     if (game.isWin) {
-        ctx.fillText('You Win!', 573, 235);
+        ctx.fillText('You Win!', 483, 235);
+        ctx.font = 'bold 28px serif';
+        ctx.fillText(`Score: ${game.score}!`, 625, 235);
     } else {
         ctx.fillText('You Lose! Try Again!', 490, 235); 
     }
     drawButton(pauseMenuButtons.exit, pauseMenuButtons.settings)
     drawButton(pauseMenuButtons.replayEnd, pauseMenuButtons.settings)
-    //ctx.font = 'bold 26px serif';
-    //ctx.fillText('Score:', 515, 275); // kunai count
-    //ctx.fillText(game.score, 515, 310); // kunai count
 };
 
 function changeBgPosition() {
@@ -1416,10 +1415,10 @@ function startGame() {
             checkAllStatuses();
             startAddZombieTimer(2000);
             game.isStartDelayEnded = true;
-            setHeroKeydownListeners();
-            setHeroKeyupListeners();
             zombieBoss.positionX = zombieBoss.startPositionX;
             zombieBoss.maxXPosition = zombieBoss.startPositionX;
+            setHeroKeydownListeners();
+            setHeroKeyupListeners();
             clearInterval(game.startDelay);
         }
     }, 1000); 
@@ -1823,7 +1822,6 @@ let startTimer = setInterval(function() {
         clearInterval(startTimer)
         mainMenuEngine();
         addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
-
     };
 }, 50);
 

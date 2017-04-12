@@ -7,11 +7,24 @@
   }
 }
 
+@font-face {
+    font-family: "Futurot";
+        url("../fonts/Futurot.ttf") format("truetype")
+    font-weight: normal;
+    font-style: normal;
+}
+
 
 html {
 	height: 100%;
+	font-family: 'Future Rot, Futurot';
 }
-
+p {
+	color: white;
+	font-size: 50px;
+	font-weight: bold;
+	position: absolute;
+}
 body {
 	position: relative;
   	display: flex;
