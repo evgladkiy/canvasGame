@@ -1,78 +1,104 @@
-function Timeout(callback, delay) {
-    let timerId;
-    let start;
-    let remaining = delay;
-
-    this.pause = function() {
-        window.clearTimeout(timerId);
-        remaining -= new Date() - start;
-    };
-
-    this.resume = function() {
-        start = new Date();
-        window.clearTimeout(timerId);
-        timerId = window.setTimeout(callback, remaining);
-    };
-
-    this.resume();
-};
+let promisesArr = [];
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min)) + min;
-}
+};
+
+class Timeout {
+    constructor(callback, delay) {
+        this.callback = callback
+        this.timerId = null;
+        this.start = null;
+        this.remaining = delay;
+    }
+    pause() {
+        clearTimeout(this.timerId);
+        this.remaining -= new Date() - this.start;
+    };
+
+    resume() {
+        this.start = new Date();
+        clearTimeout(this.timerId);
+        this.timerId = setTimeout(this.callback, this.remaining);
+    };
+    init() {
+        this.resume();
+    }
+};
+
+class newAudio {
+    constructor() {
+        this.audioElement = new Audio();
+    };
+    play() {
+        this.audioElement.play();
+    };
+    pause() {
+        this.audioElement.pause();
+    };
+    stop() {
+        this.audioElement.currentTime = 0;
+        this.audioElement.pause();
+    };
+    resetTime() {
+        this.audioElement.currentTime = 0;
+    };
+    init(src, vol, isLoope) {
+        let source = document.createElement('source');
+        source.src = src;
+        this.audioElement.appendChild(source);
+        this.audioElement.volume = vol || 1;
+        this.audioElement.loop = isLoope || false;
+    }
+};
+
+function createNewAudio(src, vol, isLoope) {
+    let audio = new newAudio(vol, isLoope);
+    audio.init(src, vol, isLoope)
+    let promise = new Promise((resolve, reject) => {
+        audio.audioElement.oncanplay = () => resolve();
+    });
+    promisesArr.push(promise);
+    return audio;
+};
 
 function createNewImg(src, width, height) {
     let newImg = new Image();
     newImg.src = src;
     newImg.height = height;
-    newImg.width = width;        
+    newImg.width = width;
+
+    let promise = new Promise((resolve, reject) => {
+        newImg.onload = () => resolve();
+    });
+    
+    promisesArr.push(promise);
     return newImg;
-}
-
-function createNewAudio(src, vol, isLoope) {
-    let audioElement =  new Audio();
-    let source = document.createElement('source');
-    source.src = src;
-    audioElement.appendChild(source);
-    audioElement.volume = vol || 1;
-    if (isLoope) {
-        audioElement.loop = true;
-    }
-    let elem = {
-        audioElement: audioElement,
-
-        play: function() {
-            this.audioElement.play();
-        },
-        pause: function() {
-            this.audioElement.pause();
-        },
-        stop: function() {
-            this.audioElement.currentTime = 0;
-            this.audioElement.pause();
-        },
-        resetTime: function(){
-            this.audioElement.currentTime = 0;
-        }
-    } 
-    return elem;
 };
 
-let playTheme = createNewAudio('./sounds/playTheme.ogg', 0.2, true);
-let mainMenuTheme = createNewAudio('./sounds/Loop.mp3', 0.2, true);
-let throwSound = createNewAudio('./sounds/swing.mp3', 0.6);
-let heroDeadSound = createNewAudio('./sounds/scream.mp3', 0.3);
-let swordSound = createNewAudio('./sounds/sword.ogg', 0.6);
-let kunaiInZombieSound = createNewAudio('./sounds/splat3.mp3');
-let pointsSound = createNewAudio('./sounds/points.mp3');
-let zombieAttackSound = createNewAudio('./sounds/yuck.mp3', 0.3);
-let bossDeadSound = createNewAudio('./sounds/yuck2.mp3', 0.3);
+const heroImg = createNewImg('./img/heroAll.png');
+const zombieMale = createNewImg('./img/zombieAll.png');
+const zombieFemale = createNewImg('./img/zombieAllF.png');
+const background = createNewImg('./img/background.jpg', 1280, 630);
+const road = createNewImg('./img/road.png', 1280, 240);
+const otherImg = createNewImg('./img/other.png');
+const pauseMenu = createNewImg('./img/menu1.png');
+const control = createNewImg('./img/control.png');
 
-let pauseSound = createNewAudio('./sounds/pause.mp3', 0.5);
-let clickMenuSound = createNewAudio('./sounds/puff.mp3', 0.8);
-let loseSound = createNewAudio('./sounds/losemusic.mp3', 0.6);
-let winSound = createNewAudio('./sounds/winmusic.mp3', 0.6);
-let heroHurted = createNewAudio('./sounds/scream2.mp3', 0.4);
+const playTheme = createNewAudio('./sounds/playTheme.ogg', 0.2, true);
+const mainMenuTheme = createNewAudio('./sounds/Loop.mp3', 0.2, true);
+const throwSound = createNewAudio('./sounds/swing.mp3', 0.6);
+const heroDeadSound = createNewAudio('./sounds/scream.mp3', 0.3);
+const swordSound = createNewAudio('./sounds/sword.ogg', 0.6);
+const kunaiInZombieSound = createNewAudio('./sounds/splat3.mp3');
+const pointsSound = createNewAudio('./sounds/points.mp3');
+const zombieAttackSound = createNewAudio('./sounds/yuck.mp3', 0.3);
+const bossDeadSound = createNewAudio('./sounds/yuck2.mp3', 0.3);
+const pauseSound = createNewAudio('./sounds/pause.mp3', 0.5);
+const clickMenuSound = createNewAudio('./sounds/puff.mp3', 0.8);
+const loseSound = createNewAudio('./sounds/losemusic.mp3', 0.6);
+const winSound = createNewAudio('./sounds/winmusic.mp3', 0.6);
+const heroHurted = createNewAudio('./sounds/scream2.mp3', 0.4);
 
 class Hero {
     constructor() {
@@ -332,29 +358,6 @@ class Kunai {
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const heroImg = createNewImg('./img/heroAll.png');
-const zombieMale = createNewImg('./img/zombieAll.png');
-const zombieFemale = createNewImg('./img/zombieAllF.png');
-const background = createNewImg('./img/background.jpg', 1280, 630);
-const road = createNewImg('./img/road.png', 1280, 240);
-const otherImg = createNewImg('./img/other.png');
-const pauseMenu = createNewImg('./img/menu1.png');
-const control = createNewImg('./img/control.png');
-
-let heroLoad = false;
-let zombieMaleLoad = false;
-let zombieFemaleLoad = false;
-let otherLoad = false;
-let backgrounLoad = false;
-let roadLoad = false;
-
-heroImg.onload  = () => heroLoad = true;
-zombieMale.onload  = () => zombieMaleLoad = true;
-zombieFemale.onload  = () => zombieFemaleLoad = true;
-otherImg.onload  = () => otherLoad = true;
-background.onload  = () => backgrounLoad = true;
-road.onload  = () => roadLoad = true;
-
 const canvasTopPosition = canvas.getBoundingClientRect().top;
 const canvasLeftposition = canvas.getBoundingClientRect().left;
 const pointsForZombie = 100;
@@ -533,15 +536,16 @@ function makeZombieDead(zombie) {
     game.score += pointsForZombie;
 
     zombie.timeout = new Timeout(() => {
-        zombieArr.splice(zombieArr.indexOf(zombie), 1)
+        zombieArr.splice(zombieArr.indexOf(zombie), 1);
     }, deadZombieTime);
+    zombie.timeout.init();
 };
 
 function makeZombieReincarnation(zombie, time) {
     zombieArr.splice(zombieArr.indexOf(zombie), 1);
     lieZombieArr.push(zombie);
-
     zombie.timeout = new Timeout(function reincarnationCallback() {
+
         if (zombie.states.deadState.currentSpriteImg === 0) {
             zombie.isFell = false;
             zombie.isDead = false;
@@ -557,9 +561,11 @@ function makeZombieReincarnation(zombie, time) {
             lieZombieArr.splice(lieZombieArr.indexOf(zombie), 1);
         } else {
             zombie.currentState.currentSpriteImg -= 1;
-            zombie.timeout = new Timeout(reincarnationCallback, 100);   
+            zombie.timeout = new Timeout(reincarnationCallback, 100);
+            zombie.timeout.init()
         }
-    }, time); 
+    }, time);
+    zombie.timeout.init()
 };
 
 function makeZombieAttack(zombie) {
@@ -1913,14 +1919,21 @@ function startAllTimer() {
 
 let spiner = document.getElementById('loading');
 
+Promise.all(promisesArr).then(() => {
+    console.log(promisesArr)
+    spiner.style.display = 'none';
+    mainMenuTheme.play();
+    mainMenuEngine();
+    addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+});
 
-let startTimer = setInterval(function() {
-    if(heroLoad && zombieMaleLoad && zombieFemaleLoad && otherLoad && backgrounLoad && roadLoad) {
-        spiner.style.display = 'none';
-        mainMenuTheme.play();
-        clearInterval(startTimer)
-        mainMenuEngine();
-        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
-    };
-}, 50);
-
+//let startTimer = setInterval(function() {
+//    if(heroLoad && zombieMaleLoad && zombieFemaleLoad && otherLoad && backgrounLoad && roadLoad) {
+//        spiner.style.display = 'none';
+//        mainMenuTheme.play();
+//        clearInterval(startTimer)
+//        mainMenuEngine();
+//        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+//    };
+//}, 50);
+//
