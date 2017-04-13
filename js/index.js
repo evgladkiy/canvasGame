@@ -29,6 +29,51 @@ function createNewImg(src, width, height) {
     return newImg;
 }
 
+function createNewAudio(src, vol, isLoope) {
+    let audioElement =  new Audio();
+    let source = document.createElement('source');
+    source.src = src;
+    audioElement.appendChild(source);
+    audioElement.volume = vol || 1;
+    if (isLoope) {
+        audioElement.loop = true;
+    }
+    let elem = {
+        audioElement: audioElement,
+
+        play: function() {
+            this.audioElement.play();
+        },
+        pause: function() {
+            this.audioElement.pause();
+        },
+        stop: function() {
+            this.audioElement.currentTime = 0;
+            this.audioElement.pause();
+        },
+        resetTime: function(){
+            this.audioElement.currentTime = 0;
+        }
+    } 
+    return elem;
+};
+
+let playTheme = createNewAudio('./sounds/playTheme.ogg', 0.2, true);
+let mainMenuTheme = createNewAudio('./sounds/Loop.mp3', 0.2, true);
+let throwSound = createNewAudio('./sounds/swing.mp3', 0.6);
+let heroDeadSound = createNewAudio('./sounds/scream.mp3', 0.3);
+let swordSound = createNewAudio('./sounds/sword.ogg', 0.6);
+let kunaiInZombieSound = createNewAudio('./sounds/splat3.mp3');
+let pointsSound = createNewAudio('./sounds/points.mp3');
+let zombieAttackSound = createNewAudio('./sounds/yuck.mp3', 0.3);
+let bossDeadSound = createNewAudio('./sounds/yuck2.mp3', 0.3);
+
+let pauseSound = createNewAudio('./sounds/pause.mp3', 0.5);
+let clickMenuSound = createNewAudio('./sounds/puff.mp3', 0.8);
+let loseSound = createNewAudio('./sounds/losemusic.mp3', 0.6);
+let winSound = createNewAudio('./sounds/winmusic.mp3', 0.6);
+let heroHurted = createNewAudio('./sounds/scream2.mp3', 0.4);
+
 class Hero {
     constructor() {
         this.img = heroImg;
@@ -284,7 +329,6 @@ class Kunai {
     };
 };
 
-
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
@@ -481,6 +525,9 @@ function isSlideUnderZombie(zombie) {
 };
 
 function makeZombieDead(zombie) {
+    zombieAttackSound.play();
+    kunaiInZombieSound.resetTime();
+    kunaiInZombieSound.play()
     zombie.isDead = true;
     zombie.currentState = zombie.states.deadState;
     game.score += pointsForZombie;
@@ -563,6 +610,7 @@ function makeHeroDamage() {
     } else {
         hero.isImmortal = true;
         hero.isInvisible = true;
+        heroHurted.play();
         makeHeroImortal(currentImmortalTime)
     } 
 };
@@ -571,17 +619,21 @@ function makeHeroDead() {
     hero.isDead = true;
     setCurrentHeroState(hero.states.deadState);
     clearInterval(mainTimer);
+    heroDeadSound.play();
     let heroDeadTimer = setInterval(function() {
         removeHeroKeydownListeners();
         removeHeroKeyupListeners();
         if (hero.currentState.currentSpriteImg >= hero.currentState.spriteCount - 1) {
             clearInterval(heroDeadTimer);
             stopGame();
+            playTheme.stop();
+            loseSound.play();
         } else {
             hero.currentState.currentSpriteImg += 1;
         }
     }, heroDeadSpeed);
 };
+
 
 function setOneHeroAction(state, time){
     clearInterval(mainTimer);
@@ -603,6 +655,8 @@ function setOneHeroAction(state, time){
                     setOneHeroAction(hero.states.jumpState, heroSpeed);
                 } else if (buttons.swordAttack.isPressed) {
                     setOneHeroAction(hero.states.swordAttackState, heroSpeed);
+                    swordSound.resetTime()
+                    swordSound.play(); 
                 } else if (buttons.throw.isPressed && hero.kunaiCount > 0) {
                     setOneHeroAction(hero.states.throwState, heroSpeed);
                 } else if (buttons.run.isPressed || buttons.runLeft.isPressed) {
@@ -614,8 +668,10 @@ function setOneHeroAction(state, time){
                 if (hero.currentState.currentSpriteImg == 2 
                   && hero.states.throwState === hero.currentState 
                   && hero.kunaiCount > 0 ) {
-                   createKunai(); 
-                   hero.kunaiCount -= 1;
+                    throwSound.resetTime();
+                    throwSound.play()
+                    createKunai(); 
+                    hero.kunaiCount -= 1;
                 }
                 hero.currentState.currentSpriteImg += 1;
             }
@@ -684,14 +740,20 @@ function checkOpportunityToCreateBonus() {
 
 function checkBonusesStatus() {
     randomBonuses.forEach((bonus) => {
-        if (isHeroCatchBonus(bonus) || bonus.positionX + bonus.width < 0) {
+        if (isHeroCatchBonus(bonus)) {
             if (bonus.item === 'kunai') {
                 hero.kunaiCount += 10 - game.difficulty * 2;
                 randomBonuses.splice(randomBonuses.indexOf(bonus), 1)
+                pointsSound.resetTime();
+                pointsSound.play();
             } else if (bonus.item === 'heart' && hero.health < hero.maxHealth) {
-                hero.health += 1
-                randomBonuses.splice(randomBonuses.indexOf(bonus), 1)
-            }   
+                hero.health += 1;
+                randomBonuses.splice(randomBonuses.indexOf(bonus), 1);
+                pointsSound.resetTime();
+                pointsSound.play();
+            } 
+        } else if (bonus.positionX + bonus.width < 0) {
+            randomBonuses.splice(randomBonuses.indexOf(bonus), 1);
         }
     })
 };
@@ -703,12 +765,17 @@ function checkZombieBossStatus() {
     };
 
     if (zombieBoss.currentHealth === 0 && zombieBoss.currentState !== zombieBoss.states.deadState) {
+        if(zombieBoss.currentState.currentSpriteImg === 1) {
+            bossDeadSound.play();
+        }
         zombieBoss.currentState = zombieBoss.states.deadState;
     };
 
     kunaiArr.forEach((kunaiItem, index) => {
         if(isKunaiInBossZombie(kunaiItem, index)) {
             if (zombieBoss.currentHealth > 0) {
+                kunaiInZombieSound.resetTime();
+                kunaiInZombieSound.play();
                 kunaiArr.splice(index, 1);
                 zombieBoss.isHurted = true;
                 zombieBoss.currentHealth -= 1;
@@ -734,6 +801,7 @@ function checkZombiesStatus() {
                     zombie.isLeft = false;
                 }
                 if (isCanKillHero(zombie)) {
+
                     makeHeroDamage();
                 } else if(!hero.isImmortal) {
                     makeZombieAttack(zombie);
@@ -745,8 +813,9 @@ function checkZombiesStatus() {
 
             kunaiArr.forEach((kunaiItem, index) => {
                 if (isKunaiInZombie(kunaiItem, zombie) && !zombie.fakeDead) {
-                    kunaiArr.splice(index, 1)
-                    makeZombieDead(zombie); 
+                    kunaiArr.splice(index, 1);
+
+                    makeZombieDead(zombie);
                 }
             })
         }
@@ -810,6 +879,8 @@ function startBossZombieTimer(time) {
                 removeHeroKeydownListeners();
                 removeHeroKeyupListeners();
                 stopGame();
+                playTheme.stop();
+                winSound.play();
             } else {  
                 if(zombieBoss.isAttack) {
                     zombieBoss.isAttack = false;
@@ -879,6 +950,7 @@ function closePauseMenu() {
         setCurrentHeroState(hero.states.stayState);
     }
     removeMenuListeners(makePauseMenuHovered, pauseMenuClickCallback);
+    resetHoverHoverMenuButtons(pauseMenuButtons)
     resumeLieZomnieTimer();
     resumeGame();
     game.isPaused = false;
@@ -894,6 +966,8 @@ function closePauseMenu() {
 function gamePauseKeydownCallback(e) {
     if (game.isStarted && game.isStartDelayEnded && isButtonsPressed(buttons.pause, e.keyCode) && !hero.isDead 
       && !zombieBoss.isDead) {
+        pauseSound.resetTime()
+        pauseSound.play();
         let stateCopy;
         if (!game.isPaused) {
             showPauseMenu();
@@ -1217,7 +1291,6 @@ function drawControlMenu() {
     ctx.font = 'bold 32px serif';
     ctx.fillStyle = '#eeeeee';
     ctx.fillText('Controls:', 580, 160);
-
     ctx.drawImage(control, 0, 0, 450, 330, 470, 170,  360, 264); 
     drawButton(controlMenuButtons.mainMenuControl, controlMenuButtons.settings);
 
@@ -1228,7 +1301,7 @@ function drawPauseMenu() {
     ctx.font = 'bold 32px serif';
     ctx.fillStyle = '#eeeeee';
     ctx.fillText('Pause!', 595, 235);
-    drawButton(pauseMenuButtons.replay, pauseMenuButtons.settings)
+    drawButton(pauseMenuButtons.replay, pauseMenuButtons.settings);
     drawButton(pauseMenuButtons.continue, pauseMenuButtons.settings);
 };
 
@@ -1244,8 +1317,8 @@ function drawEndMenu() {
     } else {
         ctx.fillText('You Lose! Try Again!', 490, 235); 
     }
-    drawButton(pauseMenuButtons.exit, pauseMenuButtons.settings)
-    drawButton(pauseMenuButtons.replayEnd, pauseMenuButtons.settings)
+    drawButton(pauseMenuButtons.exit, pauseMenuButtons.settings);
+    drawButton(pauseMenuButtons.replayEnd, pauseMenuButtons.settings);
 };
 
 function changeBgPosition() {
@@ -1373,6 +1446,7 @@ function gameEngine() {
     if (game.isPaused) {
         drawMenubg();
         if (game.isEnded) {
+            
             drawEndMenu();
         } else {
             drawPauseMenu();
@@ -1408,6 +1482,7 @@ function startGame() {
     startBossZombieTimer(bossZombieSpeed);
     game.startDelay = setInterval(() => {
     game.isStarted = true;
+    playTheme.play();
         if(game.delayTime > 0 ){
             game.delayTime -= 1;
         } else {
@@ -1448,6 +1523,7 @@ function stopGame() {
 };
 
 function resetGame() {
+    playTheme.resetTime();
     removeHeroKeydownListeners();
     removeHeroKeyupListeners();
     stopAllTimer();
@@ -1545,7 +1621,9 @@ function slideKeyupCallback(e) {
 function swordAttackKeydownCallback(e) {
     if (isButtonsPressed(buttons.swordAttack, e.keyCode)) {
         if (!hero.isPerformSingleAction && !hero.isDead && !game.isPaused) { 
-            setOneHeroAction(hero.states.swordAttackState, 40);   
+            setOneHeroAction(hero.states.swordAttackState, 40);
+            swordSound.resetTime()
+            swordSound.play(); 
         }
         buttons.swordAttack.isPressed = true;
     };
@@ -1561,7 +1639,7 @@ function swordAttackKeyupCallback(e) {
 function throwKeydownCallback(e) {
     if (isButtonsPressed(buttons.throw, e.keyCode)) {
         if (!hero.isPerformSingleAction && !hero.isDead && hero.kunaiCount > 0 && !game.isPaused) { 
-            setOneHeroAction(hero.states.throwState, 40);   
+            setOneHeroAction(hero.states.throwState, 40);  
         }
         buttons.throw.isPressed = true;
     };
@@ -1614,6 +1692,15 @@ function goTomeinMenu(hideMenu, buttons, hoverListener, clickListener) {
     addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
 };
 
+function goFromeMenu(newMenu, buttons, newHoverListener, newClickListener) {
+    resetHoverHoverMenuButtons(buttons);
+    removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
+    game.isShowMainMenu = false;
+    game[newMenu] = true;
+    addMenuListeners(newHoverListener, newClickListener);
+    clickMenuSound.play();
+};
+
 /// menu liseteners
 function makeMainMenuHovered(e) {
     if (isButtonHovered(e, mainMenuButtons.play, mainMenuButtons.settings)) {
@@ -1635,18 +1722,13 @@ function mainMenuClickCallback(e) {
         removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
         cancelAnimationFrame(game.menuId);
         startGame();
+        clickMenuSound.play();
+        mainMenuTheme.stop();
     } else if (isButtonHovered(e, mainMenuButtons.difficulty, mainMenuButtons.settings)){
-        resetHoverHoverMenuButtons(pauseMenuButtons);
-        removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
-        game.isShowMainMenu = false;
-        game.isShowDifficultyMenu = true;
-        addMenuListeners(makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        goFromeMenu('isShowDifficultyMenu', pauseMenuButtons,
+          makeDifficultyMenuHovered, difficultyMenuClickCallback)
     } else if (isButtonHovered(e, mainMenuButtons.control, mainMenuButtons.settings)) {
-        resetHoverHoverMenuButtons(pauseMenuButtons);
-        removeMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
-        game.isShowMainMenu = false;
-        game.isShowControl = true;
-        addMenuListeners(makeControlMenuHovered, controlMenuClickCallback);
+        goFromeMenu('isShowControl', pauseMenuButtons,makeControlMenuHovered, controlMenuClickCallback )
     };
 };
 
@@ -1662,6 +1744,7 @@ function controlMenuClickCallback(e) {
     if (isButtonHovered(e, controlMenuButtons.mainMenuControl, controlMenuButtons.settings)) {
         goTomeinMenu ('isShowControl', mainMenuButtons,
         makeControlMenuHovered, controlMenuClickCallback);
+        pauseSound.play();
     } 
 };
 
@@ -1686,19 +1769,23 @@ function difficultyMenuClickCallback(e) {
         game.difficulty = 0;
         goTomeinMenu ('isShowDifficultyMenu', mainMenuButtons,
         makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        clickMenuSound.play();
     } else if (isButtonHovered(e, mainMenuButtons.normal, mainMenuButtons.settings)){
         setActiveDifficulty(mainMenuButtons.normal);
         game.difficulty = 1;
         goTomeinMenu ('isShowDifficultyMenu', mainMenuButtons,
         makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        clickMenuSound.play();
     } else if (isButtonHovered(e, mainMenuButtons.hellMode, mainMenuButtons.settings)) {
         setActiveDifficulty(mainMenuButtons.hellMode);
         game.difficulty = 2;
         goTomeinMenu ('isShowDifficultyMenu', mainMenuButtons,
         makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        clickMenuSound.play();
     } else if (isButtonHovered(e, mainMenuButtons.mainMenu, mainMenuButtons.settings)) {
         goTomeinMenu ('isShowDifficultyMenu', mainMenuButtons,
         makeDifficultyMenuHovered, difficultyMenuClickCallback);
+        pauseSound.play();
     }
 };
 
@@ -1716,10 +1803,12 @@ function pauseMenuClickCallback(e) {
     if (isButtonHovered(e, pauseMenuButtons.replay, pauseMenuButtons.settings)) {
         resetHoverHoverMenuButtons(pauseMenuButtons);
         removeMenuListeners(makePauseMenuHovered, pauseMenuClickCallback);
+        clickMenuSound.play();
         resetGame();
     } else if (isButtonHovered(e, pauseMenuButtons.continue, pauseMenuButtons.settings)){
         resetHoverHoverMenuButtons(pauseMenuButtons);
         closePauseMenu();
+        clickMenuSound.play();
     };
 };
 
@@ -1739,6 +1828,7 @@ function replayEndClickCallback(e) {
         removeMenuListeners(makeReplayEndButtonHovered, replayEndClickCallback)
         resetHoverHoverMenuButtons(pauseMenuButtons);
         resetGame();
+        clickMenuSound.play();
     } else if (isButtonHovered(e, pauseMenuButtons.exit, pauseMenuButtons.settings)){
         goTomeinMenu('isStarted', pauseMenuButtons,
         makeReplayEndButtonHovered, replayEndClickCallback);
@@ -1746,6 +1836,8 @@ function replayEndClickCallback(e) {
         removeHeroKeydownListeners();
         removeHeroKeyupListeners();
         mainMenuEngine();
+        clickMenuSound.play();
+        mainMenuTheme.play();
     }
 }; 
 
@@ -1816,9 +1908,11 @@ function startAllTimer() {
 
 let spiner = document.getElementById('loading');
 
+
 let startTimer = setInterval(function() {
     if(heroLoad && zombieMaleLoad && zombieFemaleLoad && otherLoad && backgrounLoad && roadLoad) {
         spiner.style.display = 'none';
+        mainMenuTheme.play();
         clearInterval(startTimer)
         mainMenuEngine();
         addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
