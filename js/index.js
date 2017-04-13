@@ -1126,7 +1126,12 @@ function drawWinConditions() {
     ctx.font = "36px serif";
     ctx.fillStyle = '#eeeeee';
     ctx.fillText('Survive and kill the Boss!', 450, 150);
-    ctx.fillText(`${game.delayTime}`, 620, 200);
+    if (game.delayTime > 0) {
+        ctx.fillText(`${game.delayTime}`, 620, 200);
+    }
+    if (game.delayTime === 0) {
+        ctx.fillText(`Run!`, 600, 200);
+    }
 }
 
 /// draw menu
