@@ -99,6 +99,8 @@ const clickMenuSound = createNewAudio('./sounds/puff.mp3', 0.8);
 const loseSound = createNewAudio('./sounds/losemusic.mp3', 0.6);
 const winSound = createNewAudio('./sounds/winmusic.mp3', 0.6);
 const heroHurted = createNewAudio('./sounds/scream2.mp3', 0.4);
+const zombieFellSound = createNewAudio('./sounds/zombie_falling_1.mp3', 0.8);
+const zombieReincarnationSound = createNewAudio('./sounds/groan4.mp3', 0.8);
 
 class Hero {
     constructor() {
@@ -113,7 +115,7 @@ class Hero {
         this.isInvisible = false;
         this.kunaiCount = 10 - game.difficulty * 2;
         this.health = 3;
-        this.maxHealth = 5 - game.difficulty;
+        this.maxHealth = 5 - game.difficulty * 2;
         this.states = {    
             deadState: {
                 width: 145,
@@ -542,10 +544,11 @@ function makeZombieDead(zombie) {
 };
 
 function makeZombieReincarnation(zombie, time) {
+    
     zombieArr.splice(zombieArr.indexOf(zombie), 1);
     lieZombieArr.push(zombie);
     zombie.timeout = new Timeout(function reincarnationCallback() {
-
+        
         if (zombie.states.deadState.currentSpriteImg === 0) {
             zombie.isFell = false;
             zombie.isDead = false;
@@ -560,6 +563,9 @@ function makeZombieReincarnation(zombie, time) {
             zombieArr.push(zombie);
             lieZombieArr.splice(lieZombieArr.indexOf(zombie), 1);
         } else {
+            if(zombie.states.deadState.currentSpriteImg === zombie.states.deadState.spriteCount - 1) {
+                zombieReincarnationSound.play();
+            }
             zombie.currentState.currentSpriteImg -= 1;
             zombie.timeout = new Timeout(reincarnationCallback, 100);
             zombie.timeout.init()
@@ -700,7 +706,7 @@ function isKunaiInBossZombie(kunaiItem) {
 function createRandomBonus() {
     let n = getRandomInt(1, 6);
     let newBonus = {};
-    if (n === 5) {
+    if (n === 5 && hero.maxHealth !== 1) {
         newBonus.item = 'heart',
         newBonus.standardWidth = 38;
         newBonus.standardHeight = 38;
@@ -721,7 +727,7 @@ function createRandomBonus() {
         newBonus.positionX = canvas.width + 40;;
         newBonus.positionY = 280;
     }
-    randomBonuses.push(newBonus)
+    randomBonuses.push(newBonus);
 };
 
 function isHeroCatchBonus(bonus) {
@@ -798,6 +804,7 @@ function checkZombiesStatus() {
                 makeZombieDead(zombie);
             } else if (hero.states.slideState.isCurrent &&  isSlideUnderZombie(zombie)) {
                 zombie.currentState = zombie.states.deadState;
+                zombieFellSound.play()
                 zombie.isFell = true;
                 zombie.isDead = true;
             } else if (!hero.isImmortal && !hero.states.slideState.isCurrent && isZombieAttack(zombie)) {
@@ -807,7 +814,6 @@ function checkZombiesStatus() {
                     zombie.isLeft = false;
                 }
                 if (isCanKillHero(zombie)) {
-
                     makeHeroDamage();
                 } else if(!hero.isImmortal) {
                     makeZombieAttack(zombie);
@@ -820,7 +826,6 @@ function checkZombiesStatus() {
             kunaiArr.forEach((kunaiItem, index) => {
                 if (isKunaiInZombie(kunaiItem, zombie) && !zombie.fakeDead) {
                     kunaiArr.splice(index, 1);
-
                     makeZombieDead(zombie);
                 }
             })
@@ -970,8 +975,8 @@ function closePauseMenu() {
 };
 
 function gamePauseKeydownCallback(e) {
-    if (game.isStarted && game.isStartDelayEnded && isButtonsPressed(buttons.pause, e.keyCode) && !hero.isDead 
-      && !zombieBoss.isDead) {
+    if (game.isStarted && game.isStartDelayEnded && isButtonsPressed(buttons.pause, e.keyCode) 
+      && !hero.isDead && !zombieBoss.isDead) {
         pauseSound.resetTime()
         pauseSound.play();
         let stateCopy;
@@ -1486,6 +1491,9 @@ function mainMenuEngine() {
 function startGame() {
     newGameReset();
     setCurrentHeroState(hero.states.stayState);
+    if (hero.health > hero.maxHealth) {
+        hero.health = hero.maxHealth;
+    }
     zombieBoss.currentState = zombieBoss.states.runState;
     zombieBoss.currentHealth = zombieBoss.health;
     gameEngine();
@@ -1916,24 +1924,11 @@ function startAllTimer() {
     startBossZombieTimer(bossZombieSpeed);
 };
 
-
 let spiner = document.getElementById('loading');
 
 Promise.all(promisesArr).then(() => {
-    console.log(promisesArr)
     spiner.style.display = 'none';
     mainMenuTheme.play();
     mainMenuEngine();
     addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
 });
-
-//let startTimer = setInterval(function() {
-//    if(heroLoad && zombieMaleLoad && zombieFemaleLoad && otherLoad && backgrounLoad && roadLoad) {
-//        spiner.style.display = 'none';
-//        mainMenuTheme.play();
-//        clearInterval(startTimer)
-//        mainMenuEngine();
-//        addMenuListeners(makeMainMenuHovered, mainMenuClickCallback);
-//    };
-//}, 50);
-//
