@@ -1,0 +1,25 @@
+{
+  "name": "canvasGame",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/evgladkiy/canvasGame.git"
+  },
+  "author": "Yauheni Hladkiy",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/evgladkiy/canvasGame/issues"
+  },
+  "homepage": "https://github.com/evgladkiy/canvasGame#readme",
+  "devDependencies": {
+    "babel-core": "^6.24.1",
+    "babel-loader": "^6.4.1",
+    "babel-preset-env": "^1.4.0",
+    "webpack": "^2.4.1"
+  }
+}
